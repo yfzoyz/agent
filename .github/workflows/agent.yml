@@ -6,16 +6,10 @@ on:
       - "v*"
     branches:
       - main
-    paths-ignore:
-      - ".github/workflows/agent.yml"
-      - ".github/workflows/codeql-analysis.yml"
-      - ".github/workflows/test.yml"
-      - ".github/workflows/contributors.yml"
-      - "README.md"
-      - ".goreleaser.yml"
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 # 默认只读：构建会执行 PR 里的代码，不能带着仓库默认的可写 token。
 # 只有发版 job 单独申请写权限。
@@ -25,7 +19,7 @@ permissions:
 jobs:
   build:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         goos: [linux, windows, darwin, freebsd]
         goarch: [amd64, arm64, 386]

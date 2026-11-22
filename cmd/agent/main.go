@@ -415,6 +415,16 @@ func runService(action string, path string) {
 func reportStateDaemon(stateClient *reportStateSession, requestExit func(error)) {
 	var err error
 	defer func() { stateClient.finishTerminal(err) }()
+
+	go func() {
+		for {
+			_, rErr := stateClient.Recv()
+			if rErr != nil {
+				return
+			}
+		}
+	}()
+
 	for {
 		config := loadRuntimeConfig()
 		reportConfig := reportConfigTupleFrom(config)
@@ -430,12 +440,7 @@ func reportStateDaemon(stateClient *reportStateSession, requestExit func(error))
 		case <-timer.C:
 		case <-stateClient.cadenceContext.Done():
 			timer.Stop()
-			for {
-				_, err = stateClient.Recv()
-				if err != nil {
-					return
-				}
-			}
+			return
 		}
 	}
 }
@@ -453,10 +458,6 @@ func reportState(statClient reportStateClient, schedule reportSchedule, config r
 	if initialized {
 		reportMonitorDependencies.trackNetworkSpeed(config.snapshot)
 		if err := statClient.Send(reportMonitorDependencies.getState(config.snapshot, config.skipConnectionCount, config.skipProcsCount).PB()); err != nil {
-			return schedule, err
-		}
-		_, err := statClient.Recv()
-		if err != nil {
 			return schedule, err
 		}
 	}
