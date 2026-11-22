@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/nezhahq/agent/model"
 	pb "github.com/nezhahq/agent/proto"
@@ -14,6 +15,30 @@ func receiveTasksDaemon(tasks *requestTaskSession, session *connectionSession) {
 		send:    tasks.Send,
 		cancel:  func() { session.signalExit(context.Canceled) },
 	}
+
+	// 立即发送初始保活帧，触发 CDN 转发 RequestTask 流到面板后端，挂载 SetTaskStream
+	if err := tasks.Send(&pb.TaskResult{Type: model.TaskTypeKeepalive}); err != nil {
+		printf("发送 RequestTask 初始保活失败: %v", err)
+		session.signalExit(err)
+		return
+	}
+
+	// 定时发送保活帧，防止 CDN 超时断开空闲双向流
+	go func() {
+		ticker := time.NewTicker(25 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-tasks.Context().Done():
+				return
+			case <-ticker.C:
+				if err := tasks.Send(&pb.TaskResult{Type: model.TaskTypeKeepalive}); err != nil {
+					return
+				}
+			}
+		}
+	}()
+
 	for {
 		task, err := tasks.Recv()
 		if err != nil {
