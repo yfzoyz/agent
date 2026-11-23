@@ -73,6 +73,7 @@ func (h terminalHandler) run(parent context.Context, gates taskFeatureGates, tas
 		printf("Terminal 任务解析错误: %v", err)
 		return
 	}
+	printf("Terminal: 收到网页终端请求, streamID=%s", terminal.StreamID)
 
 	streamContext, cancelStream := context.WithCancelCause(parent)
 	stream, err := h.openStream(streamContext)

@@ -59,25 +59,38 @@ mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
 # 2. 下载修复版二进制 nezha-agent
-echo "📥 正在下载针对 CDN 代理优化的 nezha-agent 二进制文件..."
+echo "📥 正在下载针对 CDN 代理优化的 nezha-agent 二进制文件 (v2.4.2)..."
 DOWNLOAD_URLS=(
-    "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.1-patch/nezha-agent"
-    "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.1-patch/nezha-agent"
-    "https://github.com/yfzoyz/agent/releases/download/v2.4.1-patch/nezha-agent"
+    "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent_linux_amd64.zip"
+    "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent_linux_amd64.zip"
+    "https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent_linux_amd64.zip"
+    "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent"
+    "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent"
+    "https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent"
 )
 
 SUCCESS=0
 for url in "${DOWNLOAD_URLS[@]}"; do
     echo "尝试从 $url 下载..."
-    if curl --noproxy "*" -fSL -m 30 "$url" -o nezha-agent.tmp; then
-        mv nezha-agent.tmp nezha-agent
-        chmod +x nezha-agent
-        SUCCESS=1
-        echo "✅ 下载成功！"
-        break
+    if [[ "$url" == *.zip ]]; then
+        if curl --noproxy "*" -fSL -m 30 "$url" -o nezha-agent.zip; then
+            if unzip -o nezha-agent.zip && chmod +x nezha-agent; then
+                rm -f nezha-agent.zip
+                SUCCESS=1
+                echo "✅ 解压并配置成功！"
+                break
+            fi
+        fi
     else
-        echo "⚠️ 下载失败，尝试下一个源..."
+        if curl --noproxy "*" -fSL -m 30 "$url" -o nezha-agent.tmp; then
+            mv nezha-agent.tmp nezha-agent
+            chmod +x nezha-agent
+            SUCCESS=1
+            echo "✅ 下载成功！"
+            break
+        fi
     fi
+    echo "⚠️ 下载失败，尝试下一个源..."
 done
 
 if [ "$SUCCESS" -ne 1 ]; then

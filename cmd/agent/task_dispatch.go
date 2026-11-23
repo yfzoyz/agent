@@ -16,12 +16,14 @@ func receiveTasksDaemon(tasks *requestTaskSession, session *connectionSession) {
 		cancel:  func() { session.signalExit(context.Canceled) },
 	}
 
-	// 立即发送初始保活帧，触发 CDN 转发 RequestTask 流到面板后端，挂载 SetTaskStream
-	if err := tasks.Send(&pb.TaskResult{Type: model.TaskTypeKeepalive}); err != nil {
-		printf("发送 RequestTask 初始保活失败: %v", err)
+	// 立即发送初始激活帧，触发 CDN 转发 RequestTask 流到面板后端，挂载 SetTaskStream
+	printf("RequestTask: 正在发送初始激活帧 (id=0, type=0, successful=true)...")
+	if err := tasks.Send(&pb.TaskResult{Id: 0, Type: 0, Successful: true}); err != nil {
+		printf("发送 RequestTask 初始激活帧失败: %v", err)
 		session.signalExit(err)
 		return
 	}
+	printf("RequestTask: 初始激活帧发送成功，等待任务派发...")
 
 	// 定时发送保活帧，防止 CDN 超时断开空闲双向流
 	go func() {
@@ -32,7 +34,7 @@ func receiveTasksDaemon(tasks *requestTaskSession, session *connectionSession) {
 			case <-tasks.Context().Done():
 				return
 			case <-ticker.C:
-				if err := tasks.Send(&pb.TaskResult{Type: model.TaskTypeKeepalive}); err != nil {
+				if err := tasks.Send(&pb.TaskResult{Id: 0, Type: 0, Successful: true}); err != nil {
 					return
 				}
 			}
@@ -46,6 +48,7 @@ func receiveTasksDaemon(tasks *requestTaskSession, session *connectionSession) {
 			session.signalExit(err)
 			return
 		}
+		printf("收到面板任务: Type=%d Id=%d DataLen=%d", task.GetType(), task.GetId(), len(task.GetData()))
 		execution.dispatch(task)
 	}
 }

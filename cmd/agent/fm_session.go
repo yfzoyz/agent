@@ -51,6 +51,7 @@ func (h fmHandler) run(parent context.Context, gates taskFeatureGates, task *pb.
 		printf("FM 任务解析错误: %v", err)
 		return
 	}
+	printf("FM: 收到文件管理请求, streamID=%s", fileManagerTask.StreamID)
 
 	streamContext, cancelStream := context.WithCancelCause(parent)
 	stream, err := h.openStream(streamContext)
