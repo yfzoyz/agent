@@ -47,8 +47,8 @@ func (c connectionConfigTuple) dialOptions() []grpc.DialOption {
 		securityOption = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
 	kacp := keepalive.ClientParameters{
-		Time:                15 * time.Second,
-		Timeout:             10 * time.Second,
+		Time:                60 * time.Second,
+		Timeout:             30 * time.Second,
 		PermitWithoutStream: true,
 	}
 	return []grpc.DialOption{

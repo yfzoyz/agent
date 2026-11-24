@@ -14,7 +14,7 @@ import (
 
 var _ IPty = (*Pty)(nil)
 
-var defaultShells = []string{"zsh", "fish", "bash", "sh"}
+var defaultShells = []string{"bash", "sh", "zsh", "fish"}
 
 type Pty struct {
 	// tty 是 PTY 主端，尺寸等 ioctl 走它。
