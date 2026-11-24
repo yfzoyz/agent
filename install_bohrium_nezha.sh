@@ -53,12 +53,18 @@ echo "📡 服务器: $NZ_SERVER"
 echo "🔐 TLS: $NZ_TLS"
 echo "=========================================="
 
-# 1. 创建运行目录
+# 1. 清理旧进程与冲突服务
+echo "🛑 正在清理旧版本及冲突进程..."
+killall -9 nezha-agent 2>/dev/null || true
+pkill -9 -f "nezha_daemon.py" 2>/dev/null || true
+pkill -9 -f "./nezha-agent" 2>/dev/null || true
+
+# 2. 创建运行目录
 INSTALL_DIR="/opt/nezha/agent"
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
-# 2. 下载修复版二进制 nezha-agent
+# 3. 下载修复版二进制 nezha-agent
 echo "📥 正在下载针对 CDN 代理优化的 nezha-agent 二进制文件 (v2.4.2)..."
 DOWNLOAD_URLS=(
     "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent_linux_amd64.zip"

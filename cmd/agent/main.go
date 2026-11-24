@@ -420,6 +420,7 @@ func reportStateDaemon(stateClient *reportStateSession, requestExit func(error))
 		for {
 			_, rErr := stateClient.Recv()
 			if rErr != nil {
+				requestExit(rErr)
 				return
 			}
 		}
@@ -461,21 +462,22 @@ func reportState(statClient reportStateClient, schedule reportSchedule, config r
 			return schedule, err
 		}
 	}
-	// 每10分钟重新获取一次硬件信息
+	// 每10分钟重新获取一次硬件信息 (异步非阻塞，避免外部故障卡死状态上报循环)
 	if schedule.host.Before(time.Now().Add(-10 * time.Minute)) {
-		if reportHost(statClient.Context(), config.snapshot) {
-			schedule.host = time.Now()
-		}
+		schedule.host = time.Now()
+		go reportHost(statClient.Context(), config.snapshot)
 	}
-	// 更新IP信息
-	if time.Since(schedule.ip) > time.Second*time.Duration(config.ipReportPeriod) || !geoipReported {
-		if reportGeoIP(statClient.Context(), config.snapshot, geoIPReportOptions{
-			useIPv6CountryCode: config.useIPv6CountryCode,
-			forceUpdate:        !geoipReported,
-		}) {
-			schedule.ip = time.Now()
-			geoipReported = true
-		}
+	// 更新IP信息 (异步非阻塞，重试间隔至少5分钟，避免国内网络超时导致阻塞监控)
+	if time.Since(schedule.ip) > time.Second*time.Duration(config.ipReportPeriod) || (!geoipReported && time.Since(schedule.ip) > 5*time.Minute) {
+		schedule.ip = time.Now()
+		go func() {
+			if reportGeoIP(statClient.Context(), config.snapshot, geoIPReportOptions{
+				useIPv6CountryCode: config.useIPv6CountryCode,
+				forceUpdate:        !geoipReported,
+			}) {
+				geoipReported = true
+			}
+		}()
 	}
 	return schedule, nil
 }
