@@ -64,15 +64,28 @@ INSTALL_DIR="/opt/nezha/agent"
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
+# 2.1 优化 Cloudflare 节点网络路由 (纯原生 Hosts 绑定，无需代理软件)
+echo "⚡ 正在配置原生 Cloudflare 稳定节点路由..."
+python3 -c "
+try:
+    with open('/etc/hosts', 'r') as f:
+        lines = [l for l in f.read().splitlines() if 'nezha.loc.cc' not in l]
+    lines.append('162.159.153.1 nezha.loc.cc')
+    with open('/etc/hosts', 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+except Exception as e:
+    pass
+" 2>/dev/null || true
+
 # 3. 下载修复版二进制 nezha-agent
-echo "📥 正在下载针对 CDN 代理优化的 nezha-agent 二进制文件 (v2.4.2)..."
+echo "📥 正在下载针对 CDN 代理优化的 nezha-agent 二进制文件 (v2.4.4)..."
 DOWNLOAD_URLS=(
+    "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.4/nezha-agent_linux_amd64.zip"
+    "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.4/nezha-agent_linux_amd64.zip"
+    "https://github.com/yfzoyz/agent/releases/download/v2.4.4/nezha-agent_linux_amd64.zip"
     "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.3/nezha-agent_linux_amd64.zip"
     "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.3/nezha-agent_linux_amd64.zip"
     "https://github.com/yfzoyz/agent/releases/download/v2.4.3/nezha-agent_linux_amd64.zip"
-    "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent_linux_amd64.zip"
-    "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent_linux_amd64.zip"
-    "https://github.com/yfzoyz/agent/releases/download/v2.4.2/nezha-agent_linux_amd64.zip"
 )
 
 SUCCESS=0
