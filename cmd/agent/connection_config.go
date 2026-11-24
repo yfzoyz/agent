@@ -3,11 +3,13 @@ package main
 import (
 	"crypto/tls"
 	"log"
+	"time"
 
 	"github.com/nezhahq/agent/model"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 type connectionConfigTuple struct {
@@ -44,5 +46,15 @@ func (c connectionConfigTuple) dialOptions() []grpc.DialOption {
 	} else {
 		securityOption = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
-	return []grpc.DialOption{securityOption, grpc.WithPerRPCCredentials(c.Auth)}
+	kacp := keepalive.ClientParameters{
+		Time:                15 * time.Second,
+		Timeout:             10 * time.Second,
+		PermitWithoutStream: true,
+	}
+	return []grpc.DialOption{
+		securityOption,
+		grpc.WithPerRPCCredentials(c.Auth),
+		grpc.WithKeepaliveParams(kacp),
+		grpc.WithNoProxy(),
+	}
 }

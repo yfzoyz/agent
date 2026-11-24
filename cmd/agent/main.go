@@ -285,18 +285,15 @@ func run() {
 		// 主机信息要在开始计时之前采集好：其中的 GPU 型号要运行厂商工具，慢的机器上
 		// 要好几秒，算进 RPC 的 10 秒期限里会让第一次上报必然超时并重连。
 		hostInfo := monitor.GetHost(config).PB()
-		timeOutCtx, cancel := context.WithTimeout(session.streamContext, 10*time.Second)
+		timeOutCtx, cancel := context.WithTimeout(session.streamContext, 30*time.Second)
 		dashboardBootTimeReceipt, err = client.ReportSystemInfo2(timeOutCtx, hostInfo)
 		if err != nil {
-			printf("上报系统信息失败: %v", err)
-			cancel()
-			reconnectSession(err)
-			continue
+			printf("首次上报系统信息超时或失败(记录并继续执行任务流): %v", err)
+		} else {
+			geoipReported = geoipReported && prevDashboardBootTime > 0 && dashboardBootTimeReceipt.GetData() == prevDashboardBootTime
+			prevDashboardBootTime = dashboardBootTimeReceipt.GetData()
 		}
 		cancel()
-
-		geoipReported = geoipReported && prevDashboardBootTime > 0 && dashboardBootTimeReceipt.GetData() == prevDashboardBootTime
-		prevDashboardBootTime = dashboardBootTimeReceipt.GetData()
 		initialized = true
 
 		// 执行 Task
@@ -458,8 +455,17 @@ func reportState(statClient reportStateClient, schedule reportSchedule, config r
 	}
 	if initialized {
 		reportMonitorDependencies.trackNetworkSpeed(config.snapshot)
-		if err := statClient.Send(reportMonitorDependencies.getState(config.snapshot, config.skipConnectionCount, config.skipProcsCount).PB()); err != nil {
-			return schedule, err
+		statePB := reportMonitorDependencies.getState(config.snapshot, config.skipConnectionCount, config.skipProcsCount).PB()
+		var sendErr error
+		for attempt := 0; attempt < 3; attempt++ {
+			sendErr = statClient.Send(statePB)
+			if sendErr == nil {
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+		if sendErr != nil {
+			return schedule, sendErr
 		}
 	}
 	// 每10分钟重新获取一次硬件信息 (异步非阻塞，避免外部故障卡死状态上报循环)
@@ -490,7 +496,7 @@ func reportHost(parent context.Context, config *model.AgentConfig) bool {
 	if client != nil && initialized {
 		// 采集主机信息的耗时不能算进 RPC 的期限（见首次上报处的说明）。
 		hostInfo := reportMonitorDependencies.getHost(config).PB()
-		rpcContext, cancel := context.WithTimeout(parent, 10*time.Second)
+		rpcContext, cancel := context.WithTimeout(parent, 30*time.Second)
 		defer cancel()
 		// The parent must reach the actual RPC; timing out only the caller orphans
 		// the underlying gRPC operation after the connection session is canceled.
@@ -528,7 +534,7 @@ func reportGeoIP(parent context.Context, config *model.AgentConfig, options geoI
 		return true
 	}
 
-	rpcContext, cancel := context.WithTimeout(parent, 10*time.Second)
+	rpcContext, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 	// The parent must reach the actual RPC so session cancellation stops the
 	// network call instead of abandoning work behind a caller-only timeout.
