@@ -51,6 +51,18 @@ func (r *streamTaskRegistry) wait() {
 	r.waitGroup.Wait()
 }
 
+func (r *streamTaskRegistry) waitWithContext(ctx context.Context) {
+	done := make(chan struct{})
+	go func() {
+		r.waitGroup.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+}
+
 func (r *streamTaskRegistry) activeCount() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -131,6 +143,18 @@ func (s *connectionSession) waitForDaemons() {
 	s.daemons.Wait()
 }
 
+func (s *connectionSession) waitForDaemonsWithContext(ctx context.Context) {
+	done := make(chan struct{})
+	go func() {
+		s.daemons.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+}
+
 func (s *connectionSession) stopAndWait(graceContext context.Context, cause error) {
 	if s.requestTask != nil {
 		result := s.requestTask.prepareShutdown(graceContext)
@@ -140,7 +164,7 @@ func (s *connectionSession) stopAndWait(graceContext context.Context, cause erro
 	}
 	s.longLivedStreamTasks.closeRegistration()
 	s.cancelLongLivedTasks(cause)
-	s.longLivedStreamTasks.wait()
+	s.longLivedStreamTasks.waitWithContext(graceContext)
 	if s.reportState != nil {
 		result := s.reportState.shutdown(graceContext, cause)
 		terminalErr, terminalForced := s.reportState.waitForTerminal(graceContext)
@@ -164,7 +188,7 @@ func (s *connectionSession) stopAndWait(graceContext context.Context, cause erro
 		}
 	}
 	s.cancelStream(cause)
-	s.waitForDaemons()
+	s.waitForDaemonsWithContext(graceContext)
 }
 
 func reconnectAfterSessionExit(session *connectionSession, shutdown sessionShutdown, reconnect func()) {

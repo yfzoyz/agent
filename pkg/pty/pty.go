@@ -116,10 +116,18 @@ func (pty *Pty) killChildProcess(c *exec.Cmd) error {
 }
 
 func (pty *Pty) Close() error {
-	// 先关读写句柄：它能打断正阻塞着的读写（见 interruptibleTransferFile）。
+	// 先终止子进程（shell）：
+	// 在 Linux/容器环境中，若 producePTYOutput 正阻塞在 tty/transfer 的 Read 系统调用上，
+	// 若先调用 tty.Close()，Go 内部 poll.FD 会在等待活跃 reader 释放锁时死锁 (semacquire)。
+	// 优先终止子进程会断开从端 PTY 连接，使内核向主端 Read 立即返回 EOF/EIO，顺利退出阻塞并释放锁。
+	killErr := pty.killChildProcess(pty.cmd)
 	var transferErr error
-	if pty.transfer != pty.tty {
+	if pty.transfer != nil && pty.transfer != pty.tty {
 		transferErr = pty.transfer.Close()
 	}
-	return errors.Join(transferErr, pty.tty.Close(), pty.killChildProcess(pty.cmd))
+	var ttyErr error
+	if pty.tty != nil {
+		ttyErr = pty.tty.Close()
+	}
+	return errors.Join(killErr, transferErr, ttyErr)
 }

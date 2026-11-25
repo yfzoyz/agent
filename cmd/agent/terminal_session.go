@@ -239,7 +239,10 @@ func (s *terminalSession) shutdown(
 	// IPty.Close owns process cleanup and must release an in-flight Read. Joining
 	// here keeps the producer from retaining the stream after CloseSend.
 	if !producerJoined {
-		<-s.producerDone
+		select {
+		case <-s.producerDone:
+		case <-graceContext.Done():
+		}
 	}
 	closeErr := s.owner.closeSendOnce()
 	if !forced {
