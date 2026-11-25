@@ -78,8 +78,11 @@ except Exception as e:
 " 2>/dev/null || true
 
 # 3. 下载修复版二进制 nezha-agent
-echo "📥 正在下载针对 CDN 代理优化的 nezha-agent 二进制文件 (v2.4.4)..."
+echo "📥 正在下载针对 CDN 代理优化的 nezha-agent 二进制文件 (v2.4.5)..."
 DOWNLOAD_URLS=(
+    "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.5/nezha-agent_linux_amd64.zip"
+    "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.5/nezha-agent_linux_amd64.zip"
+    "https://github.com/yfzoyz/agent/releases/download/v2.4.5/nezha-agent_linux_amd64.zip"
     "https://ghfast.top/https://github.com/yfzoyz/agent/releases/download/v2.4.4/nezha-agent_linux_amd64.zip"
     "https://ghproxy.net/https://github.com/yfzoyz/agent/releases/download/v2.4.4/nezha-agent_linux_amd64.zip"
     "https://github.com/yfzoyz/agent/releases/download/v2.4.4/nezha-agent_linux_amd64.zip"
